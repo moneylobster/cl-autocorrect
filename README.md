@@ -5,7 +5,7 @@ Should work (somewhat) in SBCL and CCL (and can be extended to other implementat
 
 ### Usage
 
-I haven't figured out how to override the Sly `*debugger-hook*` yet, but try for yourself whether the following works:
+I haven't figured out how to override the Sly `*debugger-hook*` yet, but this should work in the command-line REPL:
 ```lisp
 (setf *debugger-hook* autocorrect:autocorrecting-debugger)
 ```

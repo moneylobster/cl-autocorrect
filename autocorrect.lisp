@@ -35,10 +35,10 @@ undefined-function errors and then calls the original *debugger-hook*."
 (let ((*debugger-hook* #'autocorrecting-debugger))
   (caf '(2 2)))
 
-(defun sly-install-autocorrect ()
-  (setf (symbol-function slynk:slynk-debugger-hook) #'autocorrecting-debugger)
-  (slynk-backend:install-debugger-globally #'autocorrecting-debugger)
-  )
+;; This doesn't work...
+;; (defun sly-install-autocorrect ()
+;;   (setf (symbol-function slynk:slynk-debugger-hook) #'autocorrecting-debugger)
+;;   (slynk-backend:install-debugger-globally #'autocorrecting-debugger))
 
 ;;; Part 2: Auto-correction stuff
 ;; Adapted from https://norvig.com/spell-correct.html
