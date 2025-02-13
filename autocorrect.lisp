@@ -4,125 +4,24 @@
 ;;; Part 1: Connecting the autocorrect to the REPL
 
 ;; Issues:
-;; 1) SBCL and CCL have different errors for undefined functions:
-;;    undefined-function and ccl::undefined-function-call
-;; 2) When fast-eval'ing (which seems to be what both implementations
-;;    mostly do when using REPL) the condition is raised from generated
-;;    code (or somehow the source isn't recorded) so I can't inject my
-;;    restart into those functions
-;;   for SBCL this is somewhere in `%simple-eval'
-;;   for CCL this is somewhere in `cheap-eval'
+;; 1) CCL doesn't bring up the Sly(maybe also SLIME?) debugger, but SBCL does.
 
-
-;; Option 1: Use `*debugger-hook*'
-
-(defun my-debugger (c debugger)
-  (if (typep c 'undefined-function)
+(defun autocorrecting-debugger (c debugger)
+  (declare (ignorable debugger))
+  (print debugger)
+  (if (typep c
+			 #+sbcl 'undefined-function
+			 #+ccl 'ccl::undefined-function-call)
 	  (let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
-		(when (y-or-n-p "Undefined function ~A. Replace with ~A?"
-						(cell-error-name c)
-						%suggested-fn)
-		  (invoke-restart 'use-value (read-from-string %suggested-fn))))
-	  (invoke-debugger condition)))
+		(restart-case (error c)
+		  (autocorrect ()
+			:report (lambda (stream) (format stream "Replace the function with ~A." %suggested-fn))
+			(invoke-restart 'use-value (read-from-string %suggested-fn)))))
+	  (invoke-debugger c)))
 
 #+test
-(let ((*debugger-hook* #'my-debugger))
+(let ((*debugger-hook* #'autocorrecting-debugger))
   (caf '(2 2)))
-
-;; Option 2: Override `%coerce-name-to-fun'
-
-;; (defmacro inject-autocorrect (fun)
-;;   "Replace a function definition with a wrapper that calls the function
-;; with the autocorrect restart. Makes some assumptions about FUN's
-;; inputs, so don't use for other purposes."
-;;   `(progn (defvar ,(read-from-string (concatenate 'string "*original-" (symbol-name fun) "*")) #',fun)
-;; 		  (with-unlocked-packages (,(symbol-package fun))
-;; 			(defun ,fun (symbol)
-;; 			  (let ((%suggested-fn nil))
-;; 				(restart-case (funcall ,(read-from-string (concatenate 'string "*original-" (symbol-name fun) "*")) symbol)
-;; 				  (autocorrect ()
-;; 					:report (lambda (stream) (format stream "Replace the function with ~A." %suggested-fn))
-;; 					:test (lambda (c)
-;; 							(if (typep c 'undefined-function)
-;; 								;; compute and store the autocorrection
-;; 								(setf %suggested-fn
-;; 									  (autocorrect-function (write-to-string (cell-error-name c))))
-;; 								nil))
-;; 					(,fun (read-from-string %suggested-fn)))))))))
-
-;; ;; This works on SBCL the *second* time the undefined function is attempted to be called
-;; #+sbcl
-;; (inject-autocorrect sb-kernel:%coerce-name-to-fun)
-;; ;; This one is for coercing to 'function
-;; #+sbcl
-;; (inject-autocorrect sb-kernel:coerce-symbol-to-fun)
-
-;; Option 3: Override `symbol-function'
-;; SBCL only calls this if the REPL call is made using `eval'
-;; so doesn't really work well. CCL doesn't call this at all.
-
-;; (inject-autocorrect symbol-function)
-
-;; Option 4: Wrap all REPL calls in your own function
-;; Couldn't get this working well since I can't get the restart to
-;; return from a lower stack in the backtrace. Fixing the function
-;; call at this level of the stack also seems hard since we don't know
-;; where the undefined function is.
-
-;; (defun eval-with-autocorrect (form)
-;;   (let ((%suggested-fn nil))
-;; 	(restart-case (eval form)
-;; 	  (autocorrect ()
-;; 		:report (lambda (stream) (format stream "Replace the function with ~A." %suggested-fn))
-;; 		:test (lambda (c)
-;; 				(if (typep c 'undefined-function)
-;; 					;; compute and store the autocorrection
-;; 					(setf %suggested-fn
-;; 						  (autocorrect-function (write-to-string (cell-error-name c))))
-;; 					nil))
-;; 		;; Problems start here
-;; 		(let ()
-;; 		  (slynk-backend:return-from-frame 0 %suggested-fn))))))
-
-
-;; Option 5: Reimplement `%coerce-name-to-fun'
-;; Doing rewrites of the implementation source may work but feels wrong.
-
-;; (with-unlocked-packages (sb-kernel)
-;;   (defun sb-kernel:%coerce-name-to-fun (name)
-;; 	(typecase name
-;; 	  ((and symbol (not null))
-;; 	   (let ((fun (sb-kernel:%symbol-function name)))
-;; 		 (when (and fun (not (sb-impl::macro/special-guard-fun-p fun)))
-;; 		   (return-from sb-kernel:%coerce-name-to-fun fun))))
-;; 	  (cons
-;; 	   (sb-int:binding* ((sb-kernel:fdefn (sb-impl::find-fdefn name) :exit-if-null)
-;; 				  (fun (sb-impl::fdefn-fun fdefn) :exit-if-null))
-;; 		 (return-from sb-kernel:%coerce-name-to-fun fun))))
-;; 	;; We explicitly allow any function name when retrying,
-;; 	;; even if the erring caller was SYMBOL-FUNCTION. It is consistent
-;; 	;; that both #'(SETF MYNEWFUN) and '(SETF MYNEWFUN) are permitted
-;; 	;; as the object to use in the USE-VALUE restart.
-;; 	(setq name (restart-case (if (sb-int:legal-fun-name-p name)
-;; 								 (error 'undefined-function :name name)
-;; 								 (sb-int:legal-fun-name-or-type-error name))
-;; 				 (continue ()
-;; 				   :report (lambda (stream)
-;; 							 (format stream "Retry using ~s." name))
-;; 				   name)
-;; 				 (use-value (value)
-;; 				   :report (lambda (stream)
-;; 							 (format stream "Use specified function"))
-;; 				   :interactive sb-int:read-evaluated-form
-;; 				   (if (functionp value)
-;; 					   (return-from sb-kernel:%coerce-name-to-fun value)
-;; 					   value))
-;; 				 (autocorrect ()
-;; 				   :report (lambda (stream) (format stream "Replace the function with ~A." (autocorrect-function (write-to-string name))))
-;; 				   (return-from sb-kernel:%coerce-name-to-fun
-;; 					 (symbol-function (read-from-string
-;; 									   (autocorrect-function (write-to-string name))))))))
-;; 	(%coerce-name-to-fun name)))
 
 ;;; Part 2: Auto-correction stuff
 ;; Adapted from https://norvig.com/spell-correct.html
@@ -151,11 +50,19 @@ function and symbol names as well, but we ignore that in the name of
 speed.")
 
 
-
 (defun autocorrect-function (misspelled-fn)
   "Return one of the most likely corrections for the function name (as a string)
 MISSPELLED-FN."
   (candidate misspelled-fn (get-all-functions)))
+
+(defun known (word dictionary)
+  "Return whether WORD is in DICTIONARY."
+  (member word dictionary :test #'equalp))
+
+(defun candidate (word dictionary)
+  "Find the first possible spelling correction for the string WORD."
+  (first (member-if (lambda (x) (known x dictionary))
+					(nconc (edits1 word) (edits2 word)))))
 
 (defun get-all-functions (&optional (mode *correction-mode*))
   "Return a list of all functions' symbols as strings.
@@ -181,15 +88,6 @@ can be specified using MODE."
 		   (when (fboundp s)
 			 (push (write-to-string s) lst))))))
 	lst))
-
-(defun known (word dictionary)
-  "Return whether WORD is in DICTIONARY."
-  (member word dictionary :test #'equalp))
-
-(defun candidate (word dictionary)
-  "Find the first possible spelling correction for the string WORD."
-  (first (member-if (lambda (x) (known x dictionary))
-					(nconc (edits1 word) (edits2 word)))))
 
 (defun edits1 (word)
   "All edits that are one edit away from the string WORD."
