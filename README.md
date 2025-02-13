@@ -7,7 +7,7 @@ Should work (somewhat) in SBCL and CCL (and can be extended to other implementat
 
 I haven't figured out how to override the Sly `*debugger-hook*` yet, but this should work in the command-line REPL:
 ```lisp
-(setf *debugger-hook* autocorrect:autocorrecting-debugger)
+(setf *debugger-hook* #'autocorrect:autocorrecting-debugger)
 ```
 Afterwards, when you execute a misspelled function you should see an autocorrect suggestion like this:
 ```lisp
