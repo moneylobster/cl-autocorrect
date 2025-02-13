@@ -1,11 +1,14 @@
 ;;;; Autocorrect
+;; A misspelled function auto-corrector for the REPL.
+
 (defpackage :autocorrect
   (:use :cl)
   (:export
-   #:autocorrecting-debugger))
+   #:autocorrecting-debugger
+   #:*correction-mode*
+   #:*alphabet*))
 
 (in-package :autocorrect)
-;; Attempts at implementing a misspelled function auto-corrector at the REPL.
 
 ;;; Part 1: Connecting the autocorrect to the REPL
 
@@ -13,7 +16,7 @@
 
 (defun autocorrecting-debugger (c debugger)
   "A debugger-hook that adds in an autocorrected replacement option for
-undefined-function errors."
+undefined-function errors and then calls the original *debugger-hook*."
   (declare (ignorable debugger))
   ;; change the debugger back to the original
   (let ((*debugger-hook* *original-debugger-hook*))
@@ -28,9 +31,14 @@ undefined-function errors."
 			  (invoke-restart 'use-value (read-from-string %suggested-fn)))))
 		(invoke-debugger c))))
 
-#+test
+#+example
 (let ((*debugger-hook* #'autocorrecting-debugger))
   (caf '(2 2)))
+
+(defun sly-install-autocorrect ()
+  (setf (symbol-function slynk:slynk-debugger-hook) #'autocorrecting-debugger)
+  (slynk-backend:install-debugger-globally #'autocorrecting-debugger)
+  )
 
 ;;; Part 2: Auto-correction stuff
 ;; Adapted from https://norvig.com/spell-correct.html
@@ -39,9 +47,6 @@ undefined-function errors."
 ;; Issues:
 ;; 1) Generating edits takes a lot of time, maybe check edits1 first
 ;;    before generating edits2?
-;; 2) May not work when it's moved to its' own package, will need to
-;;    modify `get-all-functions' then. Maybe use package info from
-;;    sly/slime?
 
 (defvar *correction-mode* :local
   "Determines which functions to look at as possible corrections.
