@@ -13,41 +13,57 @@
 ;;   for SBCL this is somewhere in `%simple-eval'
 ;;   for CCL this is somewhere in `cheap-eval'
 
-;; Option 1: Override `%coerce-name-to-fun'
 
-(defmacro inject-autocorrect (fun)
-  "Replace a function definition with a wrapper that calls the function
-with the autocorrect restart. Makes some assumptions about FUN's
-inputs, so don't use for other purposes."
-  `(progn (defvar ,(read-from-string (concatenate 'string "*original-" (symbol-name fun) "*")) #',fun)
-		  (with-unlocked-packages (,(symbol-package fun))
-			(defun ,fun (symbol)
-			  (let ((%suggested-fn nil))
-				(restart-case (funcall ,(read-from-string (concatenate 'string "*original-" (symbol-name fun) "*")) symbol)
-				  (autocorrect ()
-					:report (lambda (stream) (format stream "Replace the function with ~A." %suggested-fn))
-					:test (lambda (c)
-							(if (typep c 'undefined-function)
-								;; compute and store the autocorrection
-								(setf %suggested-fn
-									  (autocorrect-function (write-to-string (cell-error-name c))))
-								nil))
-					(,fun (read-from-string %suggested-fn)))))))))
+;; Option 1: Use `*debugger-hook*'
 
-;; This works on SBCL the *second* time the undefined function is attempted to be called
-#+sbcl
-(inject-autocorrect sb-kernel:%coerce-name-to-fun)
-;; This one is for coercing to 'function
-#+sbcl
-(inject-autocorrect sb-kernel:coerce-symbol-to-fun)
+(defun my-debugger (c debugger)
+  (if (typep c 'undefined-function)
+	  (let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
+		(when (y-or-n-p "Undefined function ~A. Replace with ~A?"
+						(cell-error-name c)
+						%suggested-fn)
+		  (invoke-restart 'use-value (read-from-string %suggested-fn))))
+	  (invoke-debugger condition)))
 
-;; Option 2: Override `symbol-function'
+#+test
+(let ((*debugger-hook* #'my-debugger))
+  (caf '(2 2)))
+
+;; Option 2: Override `%coerce-name-to-fun'
+
+;; (defmacro inject-autocorrect (fun)
+;;   "Replace a function definition with a wrapper that calls the function
+;; with the autocorrect restart. Makes some assumptions about FUN's
+;; inputs, so don't use for other purposes."
+;;   `(progn (defvar ,(read-from-string (concatenate 'string "*original-" (symbol-name fun) "*")) #',fun)
+;; 		  (with-unlocked-packages (,(symbol-package fun))
+;; 			(defun ,fun (symbol)
+;; 			  (let ((%suggested-fn nil))
+;; 				(restart-case (funcall ,(read-from-string (concatenate 'string "*original-" (symbol-name fun) "*")) symbol)
+;; 				  (autocorrect ()
+;; 					:report (lambda (stream) (format stream "Replace the function with ~A." %suggested-fn))
+;; 					:test (lambda (c)
+;; 							(if (typep c 'undefined-function)
+;; 								;; compute and store the autocorrection
+;; 								(setf %suggested-fn
+;; 									  (autocorrect-function (write-to-string (cell-error-name c))))
+;; 								nil))
+;; 					(,fun (read-from-string %suggested-fn)))))))))
+
+;; ;; This works on SBCL the *second* time the undefined function is attempted to be called
+;; #+sbcl
+;; (inject-autocorrect sb-kernel:%coerce-name-to-fun)
+;; ;; This one is for coercing to 'function
+;; #+sbcl
+;; (inject-autocorrect sb-kernel:coerce-symbol-to-fun)
+
+;; Option 3: Override `symbol-function'
 ;; SBCL only calls this if the REPL call is made using `eval'
 ;; so doesn't really work well. CCL doesn't call this at all.
 
 ;; (inject-autocorrect symbol-function)
 
-;; Option 3: Wrap all REPL calls in your own function
+;; Option 4: Wrap all REPL calls in your own function
 ;; Couldn't get this working well since I can't get the restart to
 ;; return from a lower stack in the backtrace. Fixing the function
 ;; call at this level of the stack also seems hard since we don't know
@@ -69,7 +85,7 @@ inputs, so don't use for other purposes."
 ;; 		  (slynk-backend:return-from-frame 0 %suggested-fn))))))
 
 
-;; Option 4: Reimplement `%coerce-name-to-fun'
+;; Option 5: Reimplement `%coerce-name-to-fun'
 ;; Doing rewrites of the implementation source may work but feels wrong.
 
 ;; (with-unlocked-packages (sb-kernel)
