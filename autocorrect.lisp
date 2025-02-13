@@ -6,16 +6,19 @@
 ;; Issues:
 ;; 1) CCL doesn't bring up the Sly(maybe also SLIME?) debugger, but SBCL does.
 
+(defvar *original-debugger-hook* *debugger-hook*)
+
 (defun autocorrecting-debugger (c debugger)
   (declare (ignorable debugger))
-  (print debugger)
   (if (typep c
 			 #+sbcl 'undefined-function
 			 #+ccl 'ccl::undefined-function-call)
-	  (let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
+	  (let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c))))
+			(*debugger-hook* *original-debugger-hook*))
 		(restart-case (error c)
 		  (autocorrect ()
-			:report (lambda (stream) (format stream "Replace the function with ~A." %suggested-fn))
+			:report (lambda (stream)
+					  (format stream "Replace the function with ~A." %suggested-fn))
 			(invoke-restart 'use-value (read-from-string %suggested-fn)))))
 	  (invoke-debugger c)))
 
