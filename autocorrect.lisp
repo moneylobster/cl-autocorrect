@@ -1,26 +1,32 @@
 ;;;; Autocorrect
+(defpackage :autocorrect
+  (:use :cl)
+  (:export
+   #:autocorrecting-debugger))
+
+(in-package :autocorrect)
 ;; Attempts at implementing a misspelled function auto-corrector at the REPL.
 
 ;;; Part 1: Connecting the autocorrect to the REPL
 
-;; Issues:
-;; 1) CCL doesn't bring up the Sly(maybe also SLIME?) debugger, but SBCL does.
-
 (defvar *original-debugger-hook* *debugger-hook*)
 
 (defun autocorrecting-debugger (c debugger)
+  "A debugger-hook that adds in an autocorrected replacement option for
+undefined-function errors."
   (declare (ignorable debugger))
-  (if (typep c
-			 #+sbcl 'undefined-function
-			 #+ccl 'ccl::undefined-function-call)
-	  (let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c))))
-			(*debugger-hook* *original-debugger-hook*))
-		(restart-case (error c)
-		  (autocorrect ()
-			:report (lambda (stream)
-					  (format stream "Replace the function with ~A." %suggested-fn))
-			(invoke-restart 'use-value (read-from-string %suggested-fn)))))
-	  (invoke-debugger c)))
+  ;; change the debugger back to the original
+  (let ((*debugger-hook* *original-debugger-hook*))
+	(if (typep c
+			   #+sbcl 'undefined-function
+			   #+ccl 'ccl::undefined-function-call) ; add your implementation here!
+		(let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
+		  (restart-case (error c)
+			(autocorrect ()
+			  :report (lambda (stream)
+						(format stream "Replace the function with ~A." %suggested-fn))
+			  (invoke-restart 'use-value (read-from-string %suggested-fn)))))
+		(invoke-debugger c))))
 
 #+test
 (let ((*debugger-hook* #'autocorrecting-debugger))
@@ -43,7 +49,7 @@ Any choice besides :local takes a long time, not recommended.
 
 Options: (sorted in terms of compute load)
 
-:LOCAL Current package only.
+:LOCAL Current package only. (which includes :cl usually)
 :EXPORTED Exported functions in all packages. (and all functions in current package)
 :ALL All functions in all packages.")
 
