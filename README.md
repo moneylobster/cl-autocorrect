@@ -1,15 +1,29 @@
 ## cl-autocorrect
 
-Suggests corrections to your misspelled functions. Can be loaded as "autocorrect".
-Should work (somewhat) in SBCL and CCL (and can be extended to other implementations by modifying a single line).
+Suggests corrections to your misspelled functions. Can be quickloaded as a local project as "autocorrect".
+Should work in SBCL and CCL (and can be extended to other implementations by modifying a single line).
 
-### Usage
+### Setup
+#### SLIME/Sly
+Call the following function in your `~/.swank.lisp` (for SLIME) or `~/.slynk.lisp` (for Sly) file. (You should also load this system beforehand: if you cloned this to your quicklisp `local-projects` folder, you can use `(ql:quickload "autocorrect")`)
+SLIME:
+```lisp
+(autocorrect:slime-install-autocorrect)
+```
+Sly:
+```lisp
+(autocorrect:sly-install-autocorrect)
+```
+You will see a "Autocorrect hook installed!" among the other startup output in your inferior-lisp buffer.
 
-I haven't figured out how to override the Sly `*debugger-hook*` yet, but this should work in the command-line REPL:
+It's not possible (to my knowledge) to install/remove this hook without restarting SLIME/Sly.
+#### Command-line
+It's enough to set the `*debugger-hook*` for the autocorrect to take effect. You can also add this to your `.sbclrc` (or equivalent) file to have it load on startup.
 ```lisp
 (setf *debugger-hook* #'autocorrect:autocorrecting-debugger)
 ```
-Afterwards, when you execute a misspelled function you should see an autocorrect suggestion like this:
+### Usage
+Once the hook is in place, when you type in a misspelled function call you should see an autocorrect suggestion like this:
 ```lisp
 (caf '(1 2))
 =>
@@ -26,19 +40,12 @@ Restarts:
  ```
 Pressing 0 here will replace `caf` with `car`, returning 1 as the result.
 
-Locally overriding `*debugger-hook*` works in Sly, but is not really practical:
-```lisp
-(let ((*debugger-hook* #'autocorrect:autocorrecting-debugger))
-  (caf '(1 2)))
-```
-
 ### Configuration
 
 See the `*alphabet*` and `*correction-mode*` variables.
 
 ### Improvements/TODOs
 
-- Figure out how to install the hook globally in Sly and SLIME
 - Maybe provide multiple autocorrect suggestions?
 - Speed up autocorrect function
 - Improve suggestion quality by assigning probabilities to suggestions: Currently all one-edit fixes take priority over two-edit fixes (and the first one that happens to work gets suggested), but this can be further improved by scanning the codebase/REPL history to get some function usage stats, or by hardcoding in some probabilities extracted from a lisp code dataset somewhere.

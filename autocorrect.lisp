@@ -6,7 +6,9 @@
   (:export
    #:autocorrecting-debugger
    #:*correction-mode*
-   #:*alphabet*))
+   #:*alphabet*
+   #:sly-install-autocorrect
+   #:slime-install-autocorrect))
 
 (in-package :autocorrect)
 
@@ -31,14 +33,24 @@ undefined-function errors and then calls the original *debugger-hook*."
 			  (invoke-restart 'use-value (read-from-string %suggested-fn)))))
 		(invoke-debugger c))))
 
-#+example
-(let ((*debugger-hook* #'autocorrecting-debugger))
-  (caf '(2 2)))
+;; Some relevant links for overriding *debugger-hook* in slime/sly:
+;; SO: https://stackoverflow.com/questions/16118283/turn-off-debugger-in-emacs-slime
+;; slime-devel: https://mailman3.common-lisp.net/hyperkitty/list/slime-devel@common-lisp.net/thread/DTUXGJFBWHRN35JQUQYRCJ6EUP4ZUDI6/#UKVXADOPZGCI57ZXTM6AE24ZQYRABX7N
+;; slime-devel2: https://mailman3.common-lisp.net/hyperkitty/list/slime-devel@common-lisp.net/thread/YLU7BJADUH3ERUB3NESSFA6YVS4T7TTM/#RVLKAROEN77JK3PLNR6G6NKNT5M52Z2R
 
-;; This doesn't work...
-;; (defun sly-install-autocorrect ()
-;;   (setf (symbol-function slynk:slynk-debugger-hook) #'autocorrecting-debugger)
-;;   (slynk-backend:install-debugger-globally #'autocorrecting-debugger))
+;; We use find-symbol here so that we don't get unknown package errors
+;; during loading. The find-symbol strings need to be uppercase.
+(defun slime-install-autocorrect ()
+  "Add this to your ~/.swank.lisp file to use it with SLIME."
+  (setf *original-debugger-hook* (symbol-function (find-symbol "SLIME-DEBUGGER-HOOK" :slime)))
+  (setf (symbol-function (find-symbol "SLIME-DEBUGGER-HOOK" :slime)) #'autocorrecting-debugger)
+  (format t "Autocorrect hook installed!"))
+
+(defun sly-install-autocorrect ()
+  "Add this to your ~/.slynk.lisp file to use it with Sly."
+  (setf *original-debugger-hook* (symbol-function (find-symbol "SLYNK-DEBUGGER-HOOK" :slynk)))
+  (setf (symbol-function (find-symbol "SLYNK-DEBUGGER-HOOK" :slynk)) #'autocorrecting-debugger)
+  (format t "Autocorrect hook installed!"))
 
 ;;; Part 2: Auto-correction stuff
 ;; Adapted from https://norvig.com/spell-correct.html
