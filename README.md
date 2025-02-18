@@ -43,7 +43,7 @@ Pressing 0 here will replace `caf` with `car`, returning 1 as the result.
 
 ### Configuration
 
-See the `*alphabet*` and `*correction-mode*` variables.
+See the `*correction-mode*` variable.
 
 ### Improvements/TODOs
 

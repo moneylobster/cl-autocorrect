@@ -6,7 +6,6 @@
   (:export
    #:autocorrecting-debugger
    #:*correction-mode*
-   #:*alphabet*
    #:sly-install-autocorrect
    #:slime-install-autocorrect))
 
@@ -60,11 +59,6 @@ Options: (sorted in terms of compute load)
 
 :LOCAL Current package only. (which includes :cl usually)
 :EXPORTED Exported functions in all packages. (and all functions in current package)")
-
-(defvar *alphabet* "ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*[]-=_+{}:<>/."
-  "The characters we allow to be misspelt. CL allows unicode etc. in
-function and symbol names as well, but we ignore that in the name of
-speed.")
 
 (defun autocorrect-function (misspelled-fn)
   "Return one of the most likely corrections for the function name (as a string)
