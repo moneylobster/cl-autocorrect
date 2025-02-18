@@ -1,7 +1,7 @@
 ## cl-autocorrect
 
 Suggests corrections to your misspelled functions. Can be quickloaded as a local project as "autocorrect".
-Should work in SBCL and CCL (and can be extended to other implementations by modifying a single line).
+Should work in SBCL and CCL (and can be extended to other implementations by modifying a single line). `fuzzy-match` is a dependency.
 
 ### Setup
 #### SLIME/Sly
@@ -48,6 +48,3 @@ See the `*alphabet*` and `*correction-mode*` variables.
 ### Improvements/TODOs
 
 - Maybe provide multiple autocorrect suggestions?
-- Speed up autocorrect function
-- Improve suggestion quality by assigning probabilities to suggestions: Currently all one-edit fixes take priority over two-edit fixes (and the first one that happens to work gets suggested), but this can be further improved by scanning the codebase/REPL history to get some function usage stats, or by hardcoding in some probabilities extracted from a lisp code dataset somewhere.
-- Suggestions can be weighted using keyboard layout info to prioritize letters that are close together.
