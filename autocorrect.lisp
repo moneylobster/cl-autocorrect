@@ -58,7 +58,7 @@ undefined-function errors and then calls the original *debugger-hook*."
 Options: (sorted in terms of compute load)
 
 :LOCAL Current package only. (which includes :cl usually)
-:EXPORTED Exported functions in all packages. (and all functions in current package)")
+:EXPORTED Exported functions in all packages + local symbols (LIKELY DOES NOT WORK)")
 
 (defun autocorrect-function (misspelled-fn)
   "Return one of the most likely corrections for the function name (as a string)
