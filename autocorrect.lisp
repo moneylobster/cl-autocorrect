@@ -27,6 +27,10 @@ undefined-function errors and then calls the original *debugger-hook*."
 			(autocorrect ()
 			  :report (lambda (stream)
 						(format stream "Replace the function with ~A." %suggested-fn))
+			  ;; if use-value is available, present this restart.
+			  :test (lambda (c)
+					  (declare (ignorable c))
+					  (find-restart 'use-value))
 			  (invoke-restart 'use-value (read-from-string %suggested-fn)))))
 		(invoke-debugger c))))
 
