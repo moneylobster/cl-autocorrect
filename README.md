@@ -5,7 +5,7 @@ Should work in SBCL and CCL (and can be extended to other implementations by mod
 
 ### Setup
 #### SLIME/Sly
-Call the following function in your `~/.swank.lisp` (for SLIME) or `~/.slynk.lisp` (for Sly) file. (You should also load this system beforehand: if you cloned this to your quicklisp `local-projects` folder, you can use `(ql:quickload "autocorrect")`)
+Call the following function in your `~/.swank.lisp` (for SLIME) or `~/.slynk.lisp` (for Sly) file. (You should also load this system beforehand: e.g. `(ql:quickload "autocorrect")`)
 
 SLIME:
 ```lisp
