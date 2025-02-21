@@ -41,8 +41,8 @@ undefined-function errors and then calls the original *debugger-hook*."
 ;; during loading. The find-symbol strings need to be uppercase.
 (defun slime-install-autocorrect ()
   "Add this to your ~/.swank.lisp file to use it with SLIME."
-  (setf *original-debugger-hook* (symbol-function (find-symbol "SLIME-DEBUGGER-HOOK" :slime)))
-  (setf (symbol-function (find-symbol "SLIME-DEBUGGER-HOOK" :slime)) #'autocorrecting-debugger)
+  (setf *original-debugger-hook* (symbol-function (find-symbol "SWANK-DEBUGGER-HOOK" :slime)))
+  (setf (symbol-function (find-symbol "SWANK-DEBUGGER-HOOK" :slime)) #'autocorrecting-debugger)
   (format t "Autocorrect hook installed!"))
 
 (defun sly-install-autocorrect ()
