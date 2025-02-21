@@ -21,9 +21,7 @@ undefined-function errors and then calls the original *debugger-hook*."
   (declare (ignorable debugger))
   ;; change the debugger back to the original
   (let ((*debugger-hook* *original-debugger-hook*))
-	(if (typep c
-			   #+sbcl 'undefined-function
-			   #+ccl 'ccl::undefined-function-call) ; add your implementation here!
+	(if (typep c 'undefined-function)
 		(let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
 		  (restart-case (error c)
 			(autocorrect ()
