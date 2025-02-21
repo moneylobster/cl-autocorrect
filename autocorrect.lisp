@@ -19,20 +19,19 @@
   "A debugger-hook that adds in an autocorrected replacement option for
 undefined-function errors and then calls the original *debugger-hook*."
   (declare (ignorable debugger))
-  ;; change the debugger back to the original
-  (let ((*debugger-hook* *original-debugger-hook*))
-	(if (typep c 'undefined-function)
-		(let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
-		  (restart-case (error c)
-			(autocorrect ()
-			  :report (lambda (stream)
-						(format stream "Replace the function with ~A." %suggested-fn))
-			  ;; if use-value is available, present this restart.
-			  :test (lambda (c)
-					  (declare (ignorable c))
-					  (find-restart 'use-value))
-			  (invoke-restart 'use-value (read-from-string %suggested-fn)))))
-		(invoke-debugger c))))
+  (if (typep c 'undefined-function)
+	  (let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
+		;; call the original debugger with the new restart
+		(restart-case (funcall *original-debugger-hook* c *original-debugger-hook*)
+		  (autocorrect ()
+			:report (lambda (stream)
+					  (format stream "Replace the function with ~A." %suggested-fn))
+			;; if use-value is available, present this restart.
+			:test (lambda (c)
+					(declare (ignorable c))
+					(find-restart 'use-value))
+			(invoke-restart 'use-value (read-from-string %suggested-fn)))))
+	  (invoke-debugger c)))
 
 ;; Some relevant links for overriding *debugger-hook* in slime/sly:
 ;; SO: https://stackoverflow.com/questions/16118283/turn-off-debugger-in-emacs-slime
