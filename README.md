@@ -25,20 +25,20 @@ It's enough to set the `*debugger-hook*` for the autocorrect to take effect. You
 ### Usage
 Once the hook is in place, when you type in a misspelled function call you should see an autocorrect suggestion like this:
 ```lisp
-(caf '(1 2))
+(FIST '(1 2))
 =>
-The function COMMON-LISP-USER::CAF is undefined.
+The function COMMON-LISP-USER::FIST is undefined.
    [Condition of type UNDEFINED-FUNCTION]
 
 Restarts:
- 0: [AUTOCORRECT] Replace the function with CAR.
- 1: [CONTINUE] Retry calling CAF.
+ 0: [AUTOCORRECT] Replace the function with FIRST.
+ 1: [CONTINUE] Retry calling FIST.
  2: [USE-VALUE] Call specified function.
  3: [RETURN-VALUE] Return specified values.
  4: [RETURN-NOTHING] Return zero values.
  ...
  ```
-Pressing 0 here will replace `caf` with `car`, returning 1 as the result.
+Pressing 0 here will replace `fist` with `first`, returning 1 as the result.
 
 ### Configuration
 
