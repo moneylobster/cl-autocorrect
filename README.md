@@ -1,6 +1,6 @@
 ## cl-autocorrect
 
-Suggests corrections to your misspelled functions. Can be quickloaded as a local project as "autocorrect".
+Suggests corrections to your misspelled functions. Can be quickloaded from Ultralisp as "autocorrect".
 Should work in SBCL and CCL (and can be extended to other implementations by modifying a single line). `fuzzy-match` is a dependency.
 
 ### Setup
