@@ -22,7 +22,10 @@ undefined-function errors and then calls the original *debugger-hook*."
   (if (typep c 'undefined-function)
 	  (let ((%suggested-fn (autocorrect-function (write-to-string (cell-error-name c)))))
 		;; call the original debugger with the new restart
-		(restart-case (funcall *original-debugger-hook* c *original-debugger-hook*)
+		;; if the original debugger hook is nil (eg. cli) we raise the error normally.
+		(restart-case (if (null *original-debugger-hook*)
+						  (error c)
+						  (funcall *original-debugger-hook* c *original-debugger-hook*))
 		  (autocorrect ()
 			:report (lambda (stream)
 					  (format stream "Replace the function with ~A." %suggested-fn))
